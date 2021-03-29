@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html>
+    <head>            
+        <link rel="shortcut icon" href="assets/favicon.ico" type="image/x-icon">
+ <link rel="icon" href="assets/favicon.ico" type="image/x-icon">
+ <link rel="stylesheet" href="assets/style.css">
+        <script src="https://www.gstatic.com/firebasejs/5.8.2/firebase.js"></script>
+        <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+        <style>
+                ::-webkit-scrollbar {
+                width: 10px;
+                border-radius: 5px;
+                }
+
+                ::-webkit-scrollbar-track {
+                background: #000000; 
+                }
+                
+                ::-webkit-scrollbar-thumb {
+                background: #000000; 
+                border-radius: 5px;
+                }
+
+                ::-webkit-scrollbar-thumb:hover {
+                background: #000000; 
+                }
+        </style>
+        <script>
+        // Initialize Firebase
+        var firebaseConfig = {
+          apiKey: "AIzaSyBlrK2HeAA8ZdxC0uIv96zAdEAvm7UEjcc",
+          authDomain: "darkline-30c5e.firebaseapp.com",
+          databaseURL: "https://firebender-12345.firebaseio.com",
+          projectId: "https://darkline-30c5e-default-rtdb.europe-west1.firebasedatabase.app",
+          storageBucket: "darkline-30c5e.appspot.com",
+          messagingSenderId: "G-DGCXDJ8KYZ"
+ };
+  firebase.initializeApp(firebaseConfig);
+  firebase.analytics();
+ </script>
+        <script type="text/javascript">
+            var database = firebase.database();
+            
+            function send(){
+                var name = document.getElementById("name");
+                var msg = document.getElementById("msg");
+                if (msg.value==""|| name.value==""){
+                    alert("tu dois remettre ton pseudo ou mettre un message");
+                }
+                else {
+                    var key = database.ref().push().key;
+                    database.ref(key).set({
+                        name:name.value,
+                        msg:msg.value
+                    });
+
+                }
+                name.value="";
+                msg.value="";
+                name.focus();
+            }
+            function scrolll(){
+                    document.getElementById("chat_shower").scrollTop = document.getElementById("chat_shower").scrollHeight;
+            }
+            function increase_opacity(div){
+                
+                $(div).fadeTo(400,1);
+                setInterval(scrolll(div),1000)
+                
+            }
+            //document.getElementById("chat_shower").innerHTML="<div>Loading...</div>";
+            function load_msg(){
+
+                database.ref().on("child_added", function(data){
+                        var div = document.createElement('div');
+                        div.style.opacity="0";
+                        var name = data.val().name;
+                        var msg = data.val().msg;
+                        div.innerHTML="<hr>"+name+"&nbsp;&nbsp;&nbsp;:&nbsp;&nbsp;"+msg+"";
+                        //document.getElementById("chat_shower").appendChild(div);
+                        document.getElementById("chat_shower").append(div);
+                        increase_opacity(div);
+                });
+
+            }
+            load_msg();
+        </script>
+        <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.2.1/css/bootstrap.min.css" integrity="sha384-GJzZqFGwb1QTTN6wy59ffF1BuGJpLSa9DkKMp0DgiMDm4iYMj70gZWKYbI706tWS" crossorigin="anonymous">
+    </head>
+     <title>DarkLine</title>
+    <body style="background:#222222;">
+
+      <script>
+
+        Vue.component('connected', {
+          props: ['connected', 'yourName'],
+          template: `
+            <div class="notification">
+              <div class="is-size-7 people">
+              Online({{Object.keys(connected).length}})
+              </div>
+              <div
+                v-for="user in connected"
+                class="tag people"
+                :class="isUser(user) ? 'is-info' : 'is-danger'"
+                >{{user.name}}</div>
+            </div>
+          `,
+          methods: {
+            isUser: function(user) {
+              return user.name === this.yourName
+            }
+          }
+        })
+        
+        Vue.component('panel', {
+          props: ['connected', 'yourName'],
+          template: `
+          <div class="column online_container">
+            <connected
+              :connected="connected"
+              :your-name="yourName"
+            ></connected>
+            <div
+              class="disconnect button is-small"
+              @click="disconnect"
+            >Disconnect</div>
+          </div>
+          `,
+          methods: {
+            disconnect: function () {
+              window.localStorage.removeItem("yourName")
+              window.location.reload()
+            }
+          }
+        })
+        
+        Vue.component('inputMessage', {
+          props: [
+            "yourName"
+          ],
+          template: `
+            <div class="field has-addons">
+              <p class="control is-expanded">
+                <input
+                  class="input"
+                  type="text"
+                  v-on:keyup.enter="send()"
+                  ref="input"
+                >
+              </p>
+              <p class="control">
+                <a class="button" @click="send()">
+                  Send
+                </a>
+              </p>
+            </div>
+          `,
+          methods: {
+            send: function() {
+              const input = this.$refs.input
+        
+              if (!input.value.trim()) {
+                return;
+              }
+              const newEntry = {
+                author: this.yourName,
+                text: input.value
+              }
+              firebase.database().ref('message/').push(newEntry);
+              input.value = ""
+            }
+          }
+        })
+        
+        Vue.component('messageContent', {
+          props: ['message', 'isUser', 'isSame'],
+          template: `
+            <div>
+              <p
+                v-if="!isSame"
+                v-html="message.author"
+                class="is-size-6 is-fullwidth name has-text-grey-dark"
+              ></p>
+              <div
+                v-html="message.text"
+                class="notification messageContainer" :class="{ 'is-info': isUser }"
+              ></div>
+            </div>
+          `
+        })
+        
+        Vue.component('message', {
+          props: ['message', 'yourName', 'isSame'],
+          template: `
+            <div class="level">
+              <div class="level-left">
+                <div class="has-text-left">
+                  <messageContent
+                    v-if="!isUser"
+                    :message="message"
+                    :is-user="isUser"
+                    :is-same="isSame"
+                  ></messageContent>
+                </div>
+              </div>
+              <div class="level-right">
+                <div class="has-text-right">
+                  <messageContent
+                    v-if="isUser"
+                    :message="message"
+                    :is-user="isUser"
+                    :is-same="isSame"
+                  ></messageContent>
+                </div>
+              </div>
+            </div>
+          `,
+          computed: {
+            isUser: function() {      
+              return this.message.author === this.yourName
+            }
+          }
+        })
+        
+        Vue.component('chat', {
+          props: ['messages', 'yourName'],
+          template: `
+            <div class="column is-four-fifths">
+              <div class="box">
+                <div id="container" class="notification is-white">
+                  <message
+                    v-for="(message, index) in messages"
+                    :message="message"
+                    :your-name="yourName"
+                    :is-same="isSame(messages[index-1] && messages[index-1].author, message.author)"
+                  ></message>
+                </div>
+                <inputMessage
+                :your-name="yourName"
+                ></inputMessage>
+              </div>
+            </div>
+          `,
+          methods: {
+            isSame: function(prevAuthor, author) {
+              return prevAuthor === author
+            }
+          }
+        })
+        
+        const app = new Vue({
+          el: '#app',
+          data: {
+            yourName: "",
+            messages: [],
+            connected: {}
+          },
+          created: function () {
+        
+            this.chooseYourName();
+            
+            this.iAmConnected()
+            this.fetchMessages();
+            this.fetchConnected();
+            this.deleteLastMessage()
+          },
+          updated: function(){
+            setTimeout(function(){
+              window.scroll({
+                top: document.body.scrollHeight, 
+                left: 0, 
+                behavior: 'smooth' 
+              });
+            }, 100)
+          },
+          methods: {
+            fetchMessages: function() {
+              const here = this;
+              firebase.database().ref("message/").on('value', function(snap){
+                here.messages=[];
+                for (const key in snap.val()) {
+                  if (snap.val().hasOwnProperty(key)) {
+                    here.messages.push(snap.val()[key]);
+                  }
+                }
+            });
+            },
+            iAmConnected: function() {
+              firebase.database().ref('connected/' + this.yourName).set({
+                name: this.yourName
+              });
+              
+              window.addEventListener("beforeunload", function(e) {
+                firebase.database().ref('connected/' + this.yourName).remove();
+              }.bind(this), false);
+            },
+            fetchConnected: function() {
+              const here = this;
+              firebase.database().ref("connected/").on('value', function(snap){
+                here.connected=snap.val();
+              })
+            },
+            chooseYourName: function() {
+              if(!window.localStorage.getItem("yourName")){
+                const name = prompt("Enter your name");
+                
+                if (!name) {
+                  window.location.reload()
+                  return
+                }
+        
+                this.yourName = name
+                window.localStorage.setItem("yourName", this.yourName)
+              } else {
+                this.yourName = window.localStorage.getItem("yourName")
+              }
+            },
+            deleteLastMessage: function() {
+              window.addEventListener('keyup', function(event) {
+                if (event.which !== 68 || !event.ctrlKey) {
+                  return
+                }
+                firebase.database().ref("message/").once('value', function(snapshot) {
+                  const responseArray = Object.keys(snapshot.val())
+        
+                  const key = responseArray[responseArray.length-1]
+                  firebase.database().ref('message/' + key).remove();
+                });
+              })
+            }
+          }
+        })
+        
+        </script>
+        
+        <div class="container row">
+            <div class="col-md-6"></div>
+            <div class="col-md-4">
+        <br>          
+        <h4 style="color:white;">DarkLine</h4>
+        
+        <div id="chat_shower" onload="load_msg();" class="alert alert-primary" role="alert" style="max-height:500px;overflow-y:auto;px-0">
+
+        </div>
+        <input class="form-control form-control-sm my-1" type="text" placeholder="Name" id="name" >
+        <input class="form-control form-control-sm my-1" type="text" placeholder="Message" id="msg">
+        <button onclick="send();" class="btn btn-info">💊 Send</button><br><br>    
+            </div>
+            <div class="col-md-4"></div>
+        </div>  
+    </body>
+    <!-- Site footer -->
+    <footer class="site-footer">
+        <div class="container">
+          <div class="row">
+            <div class="col-sm-12 col-md-6">
+          <h6>About</h6>
+              <p class="text-justify"> 💊 DARKED</p>
+            </div>
+  
+            
+  
+            <div class="col-xs-6 col-md-3">
+              <h6>Link</h6>
+              <ul class="footer-links">
+                <p><a href="https://discord.gg/QbZqsGf">Darked Server</a></p>
+            
+              </ul>
+            </div>
+          </div>
+          <hr>
+        </div>
+        <div class="container">
+          <div class="row">
+            <div class="col-md-8 col-sm-6 col-xs-12">
+              <p class="copyright-text">Copyright &copy; 2021 All right are reserved 
+           <a href="#">DarkLine</a>.
+              </p>
+            </div>
+  
+           
+            </div>
+          </div>
+        </div>
+  </footer>
+</html>
